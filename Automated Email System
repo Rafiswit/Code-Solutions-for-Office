@@ -1,0 +1,44 @@
+import pandas as pd
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+# Load the Excel file
+df = pd.read_excel('results.xlsx')
+
+# Group data by student ID and email address
+grouped_data = df.groupby(['student_id', 'email_address'])
+
+# Set up email credentials
+sender_email = 'your_email@example.com' # Replace with your own email address
+sender_password = 'your_email_password' # Replace with your own email password
+smtp_server = 'smtp.example.com' # Replace with your SMTP server address
+smtp_port = 587 # Replace with your SMTP port number
+
+# Loop through each group and send an email to the student
+for (student_id, email), group_df in grouped_data:
+    # Combine course titles and grades into a list
+    courses = group_df['course_title'].tolist()
+    grades = group_df['grade'].tolist()
+    course_grades = [f'{c}: {g}' for c, g in zip(courses, grades)]
+    course_grades_str = '\n'.join(course_grades)
+
+    # Create the email message
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = email
+    msg['Subject'] = f'Your grades for ID {student_id}'
+
+    body = f'Dear Student,\n\nYour grades for ID {student_id} are:\n\n{course_grades_str}\n\nSincerely,\nThe University'
+    msg.attach(MIMEText(body, 'plain'))
+
+    # Send the email
+    try:
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, email, msg.as_string())
+        print(f'Email sent to {email} for ID {student_id}')
+    except Exception as e:
+        print(f'Failed to send email to {email} for ID {student_id}')
+        print(e)
